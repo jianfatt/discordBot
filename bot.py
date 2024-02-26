@@ -76,5 +76,66 @@ async def stopclear(ctx):
     delete_messages = False
     await ctx.send("Message deletion stopped.")
 
+@bot.command()
+async def play(ctx, *, search):
+    if ctx.voice_client is not None:
+        await ctx.send("I'm already connected to a voice channel.")
+        return
+
+    channel = ctx.author.voice.channel
+    voice_channel = await channel.connect()
+
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+    }
+
+    search_query = f'ytsearch:{search}'
+
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(search_query, download=False)
+        url2play = info['entries'][0]['url']
+
+    voice_channel.play(discord.FFmpegPCMAudio(url2play))
+
+@bot.command()
+async def stopplay(ctx):
+    await ctx.voice_client.disconnect()
+
+@bot.command()
+async def queue(ctx, *, search):
+    song_queue.append(search)
+    await ctx.send(f"Added '{search}' to the queue.")
+
+@bot.command()
+async def next(ctx):
+    if song_queue:
+        next_song = song_queue.pop(0)
+        await play(ctx, search=next_song)
+    else:
+        await ctx.send("The queue is empty.")
+
+@bot.command()
+async def pause(ctx):
+    voice_client = ctx.voice_client
+    if voice_client.is_playing():
+        voice_client.pause()
+        await ctx.send("Music playback paused.")
+    else:
+        await ctx.send("No music is currently playing or music is already paused.")
+
+@bot.command()
+async def resume(ctx):
+    voice_client = ctx.voice_client
+    if voice_client.is_paused():
+        voice_client.resume()
+        await ctx.send("Music playback resumed.")
+    else:
+        await ctx.send("No music is currently paused.")
+
 load_dotenv()
 bot.run(os.getenv("TOKEN"))
