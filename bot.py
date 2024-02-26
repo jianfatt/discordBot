@@ -78,12 +78,20 @@ async def stopclear(ctx):
 
 @bot.command()
 async def play(ctx, *, search):
-    if ctx.voice_client is not None:
-        await ctx.send("I'm already connected to a voice channel.")
+    voice_client = ctx.voice_client
+    channel = ctx.author.voice.channel if ctx.author.voice else None
+    
+    if channel is None:
+        await ctx.send("You need to be in a voice channel to play music.")
         return
-
-    channel = ctx.author.voice.channel
-    voice_channel = await channel.connect()
+    
+    if voice_client is not None:
+        if voice_client.channel != channel:
+            await ctx.send("I'm already connected to a different voice channel.")
+            return
+    else:
+        voice_client = await channel.connect()
+        await ctx.send("I'm have connected to the voice channel.")
 
     ydl_opts = {
         'format': 'bestaudio/best',
@@ -100,7 +108,8 @@ async def play(ctx, *, search):
         info = ydl.extract_info(search_query, download=False)
         url2play = info['entries'][0]['url']
 
-    voice_channel.play(discord.FFmpegPCMAudio(url2play))
+    voice_client.play(discord.FFmpegPCMAudio(url2play))
+    await ctx.send(f"I'm playing: {info['entries'][0]['title']}")
 
 @bot.command()
 async def stopplay(ctx):
